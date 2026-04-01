@@ -1,5 +1,8 @@
 package softarch.restaurant.domain.inventory.entity;
 
-public class UnitType {
-  
+public enum UnitType {
+    KG,
+    GRAM,
+    LITER,
+    PIECE
 }

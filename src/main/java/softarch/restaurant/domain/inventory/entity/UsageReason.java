@@ -1,5 +1,9 @@
 package softarch.restaurant.domain.inventory.entity;
 
-public class UsageReason {
-  
+public enum UsageReason {
+    PREP,
+    SPOILAGE,
+    ADJUSTMENT,
+    AUTO_DEDUCT,
+    RESTOCK
 }

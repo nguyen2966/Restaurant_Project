@@ -1,5 +1,7 @@
 package softarch.restaurant.domain.menu.entity;
 
-public class ItemStatus {
-  
+public enum ItemStatus {
+    AVAILABLE,
+    UNAVAILABLE,
+    ARCHIVED
 }

@@ -1,0 +1,84 @@
+package softarch.restaurant.domain.kitchen.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import softarch.restaurant.domain.kitchen.dto.KitchenDTOs.KitchenTicketFilter;
+import softarch.restaurant.domain.kitchen.dto.KitchenDTOs.KitchenTicketResponse;
+import softarch.restaurant.domain.kitchen.dto.KitchenDTOs.SLAData;
+import softarch.restaurant.domain.kitchen.service.KitchenService;
+import softarch.restaurant.shared.dto.ApiResponse;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/kitchen")
+public class KitchenController {
+
+    private final KitchenService kitchenService;
+
+    public KitchenController(KitchenService kitchenService) {
+        this.kitchenService = kitchenService;
+    }
+
+    /**
+     * GET /api/kitchen/queue
+     * Matches diagram: getQueue(filter: KitchenTicketFilter)
+     * Optional params: station, status, nearDeadline, sortBy
+     */
+    @GetMapping("/queue")
+    public ResponseEntity<ApiResponse<List<KitchenTicketResponse>>> getQueue(
+            @RequestParam(required = false) List<String> stations,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean nearDeadline,
+            @RequestParam(required = false, defaultValue = "deadline") String sortBy) {
+
+        KitchenTicketFilter filter = new KitchenTicketFilter(stations, status, nearDeadline, sortBy);
+        return ResponseEntity.ok(ApiResponse.ok(kitchenService.viewQueue(filter)));
+    }
+
+    /**
+     * PATCH /api/kitchen/tickets/{id}/start
+     * Matches diagram: updateTicketStatus() → processStartCooking
+     */
+    @PatchMapping("/tickets/{id}/start")
+    public ResponseEntity<ApiResponse<KitchenTicketResponse>> start(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(kitchenService.processStartCooking(id)));
+    }
+
+    /**
+     * PATCH /api/kitchen/tickets/{id}/done
+     * Matches diagram: updateTicketStatus() → processMarkDone
+     */
+    @PatchMapping("/tickets/{id}/done")
+    public ResponseEntity<ApiResponse<KitchenTicketResponse>> done(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(kitchenService.processMarkDone(id)));
+    }
+
+    /**
+     * PATCH /api/kitchen/tickets/{id}/pause
+     */
+    @PatchMapping("/tickets/{id}/pause")
+    public ResponseEntity<ApiResponse<KitchenTicketResponse>> pause(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(kitchenService.processPause(id)));
+    }
+
+    /**
+     * PATCH /api/kitchen/tickets/{id}/undo
+     */
+    @PatchMapping("/tickets/{id}/undo")
+    public ResponseEntity<ApiResponse<KitchenTicketResponse>> undo(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(kitchenService.processUndo(id)));
+    }
+
+    /**
+     * GET /api/kitchen/sla?from=...&to=...
+     * Matches diagram: getSLAData(startDate, endDate)
+     */
+    @GetMapping("/sla")
+    public ResponseEntity<ApiResponse<List<SLAData>>> sla(
+            @RequestParam LocalDateTime from,
+            @RequestParam LocalDateTime to) {
+        return ResponseEntity.ok(ApiResponse.ok(kitchenService.getSLAData(from, to)));
+    }
+}

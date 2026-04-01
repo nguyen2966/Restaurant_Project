@@ -1,5 +1,8 @@
 package softarch.restaurant.domain.order.entity;
 
-public class OrderStatus {
-  
+public enum OrderStatus {
+    DRAFT,
+    PLACED,
+    PAID,
+    CANCELLED
 }

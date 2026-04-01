@@ -1,5 +1,7 @@
 package softarch.restaurant.domain.order.entity;
 
-public class OrderType {
-  
+public enum OrderType {
+    DINE_IN,
+    TAKEAWAY,
+    DELIVERY
 }

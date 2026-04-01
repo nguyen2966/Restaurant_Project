@@ -13,7 +13,6 @@ import softarch.restaurant.domain.kitchen.entity.KitchenTicket;
 import softarch.restaurant.domain.kitchen.repository.KitchenRepository;
 import softarch.restaurant.domain.order.entity.OrderItem;
 import softarch.restaurant.domain.order.repository.OrderItemRepository;
-import softarch.restaurant.domain.order.repository.OrderRepository;
 import softarch.restaurant.shared.exception.RestaurantException;
 
 import java.time.Duration;
@@ -21,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Comparator;
 
 @Service
 @Transactional
@@ -115,7 +115,7 @@ public class KitchenServiceImpl implements KitchenService {
 
         // Publish event so Inventory domain can auto-deduct stock
         eventPublisher.publishEvent(new KitchenItemDoneEvent(
-            saved.getId(), saved.getMenuItemId(),
+            saved.getMenuItemId(),
             saved.getQuantity(), saved.getOrderItemId()
         ));
 

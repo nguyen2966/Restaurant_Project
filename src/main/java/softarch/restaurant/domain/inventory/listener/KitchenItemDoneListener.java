@@ -6,6 +6,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import softarch.restaurant.domain.inventory.service.InventoryService;
+import softarch.restaurant.domain.kitchen.event.KitchenItemDoneEvent;
 
 /**
  * Listens for KitchenItemDoneEvent and triggers automatic stock deduction.

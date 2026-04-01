@@ -22,31 +22,31 @@
 
     <dependencies>
 
-        <!-- ✅ WEB (FIX: thay webmvc -> web) -->
+        <!-- WEB (FIX: thay webmvc -> web) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- ✅ JPA -->
+        <!-- JPA -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- ✅ VALIDATION -->
+        <!-- VALIDATION -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- ✅ SECURITY -->
+        <!-- SECURITY -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- ✅ DEVTOOLS -->
+        <!-- DEVTOOLS -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -54,14 +54,14 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- ✅ TEST (FIX: thay toàn bộ test sai) -->
+        <!-- TEST (FIX: thay toàn bộ test sai) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- ✅ JWT -->
+        <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -80,18 +80,24 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ✅ DATABASE -->
+        <!-- DATABASE -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
 
-        <!-- ✅ (FIX QUAN TRỌNG) Hypersistence đúng version -->
+        <!-- (FIX QUAN TRỌNG) Hypersistence đúng version -->
         <dependency>
             <groupId>io.hypersistence</groupId>
             <artifactId>hypersistence-utils-hibernate-63</artifactId>
             <version>3.7.6</version>
         </dependency>
+
+				<dependency>
+					<groupId>org.springdoc</groupId>
+					<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+					<version>2.2.0</version> <!-- chọn version mới nhất -->
+			</dependency>
 
     </dependencies>
 

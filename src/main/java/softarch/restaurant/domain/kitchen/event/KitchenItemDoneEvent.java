@@ -1,4 +1,4 @@
-package softarch.restaurant.domain.inventory.event;
+package softarch.restaurant.domain.kitchen.event;
 
 /**
  * Published by the Kitchen domain when a KitchenTicket transitions to DONE.

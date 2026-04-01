@@ -9,11 +9,11 @@ import softarch.restaurant.domain.menu.entity.MenuItem;
 import java.math.BigDecimal;
 import java.util.List;
 
-// ── Inbound ───────────────────────────────────────────────────────────────────
-
 public final class MenuDTOs {
 
     private MenuDTOs() {}
+
+    // ── Inbound ───────────────────────────────────────────────────────────────
 
     public record MenuRequest(
         @NotBlank(message = "Name is required")
@@ -35,12 +35,12 @@ public final class MenuDTOs {
     // ── Outbound ──────────────────────────────────────────────────────────────
 
     public record MenuItemResponse(
-        Long id,
-        String name,
-        BigDecimal basePrice,
-        String description,
-        List<String> allergens,
-        ItemStatus status
+        Long           id,
+        String         name,
+        BigDecimal     basePrice,
+        String         description,
+        List<String>   allergens,
+        ItemStatus     status
     ) {
         public static MenuItemResponse from(MenuItem item) {
             return new MenuItemResponse(

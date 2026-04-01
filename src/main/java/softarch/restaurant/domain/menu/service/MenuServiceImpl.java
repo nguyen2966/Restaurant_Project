@@ -1,5 +1,6 @@
 package softarch.restaurant.domain.menu.service;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import softarch.restaurant.domain.menu.dto.MenuDTOs.MenuItemResponse;
@@ -8,6 +9,7 @@ import softarch.restaurant.domain.menu.entity.ItemStatus;
 import softarch.restaurant.domain.menu.entity.MenuItem;
 import softarch.restaurant.domain.menu.repository.MenuRepository;
 import softarch.restaurant.domain.order.repository.OrderItemRepository;
+import softarch.restaurant.domain.promotion.service.PromoService;
 import softarch.restaurant.shared.exception.RestaurantException;
 
 import java.util.List;
@@ -18,60 +20,46 @@ import java.util.stream.Collectors;
 @Transactional
 public class MenuServiceImpl implements MenuService {
 
-    private final MenuRepository menuRepository;
+    private final MenuRepository      menuRepository;
     private final OrderItemRepository orderItemRepository;
+    // @Lazy prevents circular bean dependency (PromoService → MenuService → PromoService)
+    private final PromoService        promoService;
 
     public MenuServiceImpl(MenuRepository menuRepository,
-                           OrderItemRepository orderItemRepository) {
-        this.menuRepository = menuRepository;
+                           OrderItemRepository orderItemRepository,
+                           @Lazy PromoService promoService) {
+        this.menuRepository      = menuRepository;
         this.orderItemRepository = orderItemRepository;
+        this.promoService        = promoService;
     }
 
-    // ── Query ─────────────────────────────────────────────────────────────────
+    // ── search(String query) ──────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
-    public List<MenuItemResponse> search(String query, ItemStatus status) {
-        List<MenuItem> items;
-        boolean hasQuery = query != null && !query.isBlank();
-        boolean hasStatus = status != null;
-
-        if (hasQuery && hasStatus) {
-            items = menuRepository.findByStatusAndNameContainingIgnoreCase(status, query.trim());
-        } else if (hasQuery) {
-            items = menuRepository.findByNameContainingIgnoreCase(query.trim());
-        } else if (hasStatus) {
-            items = menuRepository.findByStatus(status);
-        } else {
-            items = menuRepository.findAll();
-        }
-        return items.stream().map(MenuItemResponse::from).toList();
+    public List<MenuItemResponse> search(String query) {
+        List<MenuItem> results = (query == null || query.isBlank())
+            ? menuRepository.findAll()
+            : menuRepository.findByNameContainingIgnoreCase(query.trim());
+        return results.stream().map(MenuItemResponse::from).toList();
     }
+
+    // ── filterByCategory / filterByStatus ────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
-    public MenuItemResponse getById(Long id) {
-        return MenuItemResponse.from(findOrThrow(id));
+    public List<MenuItemResponse> filterByStatus(ItemStatus status) {
+        return menuRepository.findByStatus(status)
+            .stream().map(MenuItemResponse::from).toList();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<MenuItemResponse> getBestSellers() {
-        return menuRepository.findBestSellers().stream()
-            .map(MenuItemResponse::from)
-            .toList();
-    }
-
-    // ── Command ───────────────────────────────────────────────────────────────
+    // ── CRUD ──────────────────────────────────────────────────────────────────
 
     @Override
     public MenuItemResponse createItem(MenuRequest request) {
         MenuItem item = new MenuItem(
-            request.name(),
-            request.basePrice(),
-            request.description(),
-            request.allergens(),
-            ItemStatus.AVAILABLE
+            request.name(), request.basePrice(),
+            request.description(), request.allergens()
         );
         return MenuItemResponse.from(menuRepository.save(item));
     }
@@ -87,52 +75,69 @@ public class MenuServiceImpl implements MenuService {
     @Override
     public void deleteItem(Long id) {
         MenuItem item = findOrThrow(id);
-        if (isItemInActiveOrder(id)) {
-            throw RestaurantException.conflict(
-                "Cannot delete menu item '" + item.getName() + "' — it is part of an active order.");
-        }
-        // Soft-delete via archiving rather than hard delete to preserve order history
-        item.archive();
+        // validateBeforeDisable checks active orders and promos
+        validateBeforeDisable(id);
+        // Soft-delete: set INACTIVE rather than hard delete (preserves order history)
+        item.setStatus(ItemStatus.INACTIVE);
         menuRepository.save(item);
     }
 
     @Override
     public MenuItemResponse setStatus(Long id, ItemStatus status) {
         MenuItem item = findOrThrow(id);
-        switch (status) {
-            case AVAILABLE   -> item.activate();
-            case UNAVAILABLE -> item.deactivate();
-            case ARCHIVED    -> item.archive();
+        if (status == ItemStatus.INACTIVE) {
+            validateBeforeDisable(id);
         }
+        item.setStatus(status);
         return MenuItemResponse.from(menuRepository.save(item));
     }
 
-    // ── Internal validation ───────────────────────────────────────────────────
+    // ── getBestSellers() ──────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
-    public List<MenuItem> validateItemsAvailable(List<Long> menuItemIds) {
-        List<MenuItem> available = menuRepository.findAvailableByIds(menuItemIds);
+    public List<MenuItemResponse> getBestSellers() {
+        return menuRepository.findBestSellers()
+            .stream().map(MenuItemResponse::from).toList();
+    }
 
-        Set<Long> foundIds = available.stream()
+    // ── validateBeforeDisable(Long id) ───────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validateBeforeDisable(Long id) {
+        MenuItem item = findOrThrow(id);
+
+        if (orderItemRepository.existsInActiveOrder(id)) {
+            throw RestaurantException.conflict(
+                "Cannot disable '" + item.getName() + "': it is part of an active order.");
+        }
+        if (promoService.isItemInActivePromo(id)) {
+            throw RestaurantException.conflict(
+                "Cannot disable '" + item.getName() + "': it is referenced by an active promotion.");
+        }
+    }
+
+    // ── validateItemsActive(List<Long> menuItemIds): Boolean ─────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MenuItem> validateItemsActive(List<Long> menuItemIds) {
+        List<MenuItem> active = menuRepository.findActiveByIds(menuItemIds);
+
+        Set<Long> activeIds = active.stream()
             .map(MenuItem::getId)
             .collect(Collectors.toSet());
 
-        List<Long> unavailable = menuItemIds.stream()
-            .filter(id -> !foundIds.contains(id))
+        List<Long> inactive = menuItemIds.stream()
+            .filter(id -> !activeIds.contains(id))
             .toList();
 
-        if (!unavailable.isEmpty()) {
+        if (!inactive.isEmpty()) {
             throw RestaurantException.badRequest(
-                "The following menu items are unavailable or do not exist: " + unavailable);
+                "The following menu items are not ACTIVE or do not exist: " + inactive);
         }
-        return available;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean isItemInActiveOrder(Long menuItemId) {
-        return orderItemRepository.existsInActiveOrder(menuItemId);
+        return active;
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

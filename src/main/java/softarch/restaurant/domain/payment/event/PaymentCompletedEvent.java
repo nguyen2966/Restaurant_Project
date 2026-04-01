@@ -1,4 +1,4 @@
-package softarch.restaurant.domain.order.listener;
+package softarch.restaurant.domain.payment.event;
 
 /**
  * Published by PaymentServiceImpl upon successful payment.
@@ -21,6 +21,4 @@ public class PaymentCompletedEvent {
     public Long   getOrderId()    { return orderId; }
     public double getAmountPaid() { return amountPaid; }
     public String getMethod()     { return method; }
-} {
-  
-}
+} 

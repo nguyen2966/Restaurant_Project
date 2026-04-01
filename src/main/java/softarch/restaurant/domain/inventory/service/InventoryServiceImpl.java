@@ -30,7 +30,6 @@ public class InventoryServiceImpl implements InventoryService {
     private final IngredientRepository ingredientRepository;
     private final RecipeRepository     recipeRepository;
     private final TransactionRepository transactionRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     public InventoryServiceImpl(IngredientRepository ingredientRepository,
                                 RecipeRepository recipeRepository,

@@ -1,7 +1,7 @@
 package softarch.restaurant.domain.menu.entity;
 
 public enum ItemStatus {
-    AVAILABLE,
-    UNAVAILABLE,
-    ARCHIVED
+    ACTIVE,
+    INACTIVE,
+    OUT_OF_STOCK
 }

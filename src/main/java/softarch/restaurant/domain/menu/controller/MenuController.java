@@ -9,6 +9,7 @@ import softarch.restaurant.domain.menu.dto.MenuDTOs.MenuRequest;
 import softarch.restaurant.domain.menu.dto.MenuDTOs.StatusRequest;
 import softarch.restaurant.domain.menu.entity.ItemStatus;
 import softarch.restaurant.domain.menu.service.MenuService;
+import softarch.restaurant.orchestration.AdminCatalogFacade;
 import softarch.restaurant.shared.dto.ApiResponse;
 
 import java.util.List;
@@ -17,24 +18,33 @@ import java.util.List;
 @RequestMapping("/api/menu")
 public class MenuController {
 
-    private final MenuService menuService;
+    private final MenuService        menuService;
+    private final AdminCatalogFacade adminCatalogFacade;
 
-    public MenuController(MenuService menuService) {
-        this.menuService = menuService;
+    public MenuController(MenuService menuService, AdminCatalogFacade adminCatalogFacade) {
+        this.menuService        = menuService;
+        this.adminCatalogFacade = adminCatalogFacade;
     }
 
-    /** GET /api/menu?query=pho&status=AVAILABLE */
+    // ── viewMenu() ────────────────────────────────────────────────────────────
+
+    /** GET /api/menu?query=pho  — all staff */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MenuItemResponse>>> search(
+    public ResponseEntity<ApiResponse<List<MenuItemResponse>>> viewMenu(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) ItemStatus status) {
-        return ResponseEntity.ok(ApiResponse.ok(menuService.search(query, status)));
+        List<MenuItemResponse> result = (status != null)
+            ? menuService.filterByStatus(status)
+            : menuService.search(query);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     /** GET /api/menu/{id} */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MenuItemResponse>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(menuService.getById(id)));
+        return ResponseEntity.ok(ApiResponse.ok(menuService.search("").stream()
+            .filter(m -> m.id().equals(id)).findFirst()
+            .orElseThrow(() -> softarch.restaurant.shared.exception.RestaurantException.notFound("MenuItem", id))));
     }
 
     /** GET /api/menu/best-sellers */
@@ -43,7 +53,9 @@ public class MenuController {
         return ResponseEntity.ok(ApiResponse.ok(menuService.getBestSellers()));
     }
 
-    /** POST /api/menu  — MANAGER only */
+    // ── manageItem() — MANAGER only ───────────────────────────────────────────
+
+    /** POST /api/menu */
     @PostMapping
     public ResponseEntity<ApiResponse<MenuItemResponse>> create(
             @Valid @RequestBody MenuRequest request) {
@@ -51,7 +63,7 @@ public class MenuController {
             .body(ApiResponse.ok(menuService.createItem(request), "Menu item created"));
     }
 
-    /** PUT /api/menu/{id}  — MANAGER only */
+    /** PUT /api/menu/{id} */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MenuItemResponse>> update(
             @PathVariable Long id,
@@ -59,18 +71,19 @@ public class MenuController {
         return ResponseEntity.ok(ApiResponse.ok(menuService.updateItem(id, request)));
     }
 
-    /** DELETE /api/menu/{id}  — MANAGER only (soft-archives) */
+    /** DELETE /api/menu/{id} — routes through AdminCatalogFacade for cross-domain validation */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        menuService.deleteItem(id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Menu item archived"));
+        adminCatalogFacade.safeDeleteMenuItem(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Menu item deactivated"));
     }
 
-    /** PATCH /api/menu/{id}/status  — MANAGER only */
+    /** PATCH /api/menu/{id}/status — routes through AdminCatalogFacade when disabling */
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<MenuItemResponse>> setStatus(
             @PathVariable Long id,
             @Valid @RequestBody StatusRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(menuService.setStatus(id, request.status())));
+        MenuItemResponse result = adminCatalogFacade.changeMenuItemStatus(id, request.status());
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 }

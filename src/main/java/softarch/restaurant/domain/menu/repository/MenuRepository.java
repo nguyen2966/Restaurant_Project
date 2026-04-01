@@ -11,29 +11,27 @@ import java.util.List;
 @Repository
 public interface MenuRepository extends JpaRepository<MenuItem, Long> {
 
+    // Matches diagram: findByStatus(ItemStatus s)
     List<MenuItem> findByStatus(ItemStatus status);
 
+    // Matches diagram: findByNameContaining(String n)
     List<MenuItem> findByNameContainingIgnoreCase(String name);
 
     List<MenuItem> findByStatusAndNameContainingIgnoreCase(ItemStatus status, String name);
 
-    /**
-     * Best sellers — joins with order_item to count total quantity sold.
-     * Returns up to 10 items sorted by times ordered descending.
-     */
-    @Query("""
-        SELECT m FROM MenuItem m
-        JOIN OrderItem oi ON oi.menuItemId = m.id
+    // Used by validateItemsActive — only returns ACTIVE items
+    @Query("SELECT m FROM MenuItem m WHERE m.id IN :ids AND m.status = 'ACTIVE'")
+    List<MenuItem> findActiveByIds(List<Long> ids);
+
+    // Best sellers via join with order_item aggregate
+    @Query(value = """
+        SELECT m.* FROM menu_item m
+        JOIN order_item oi ON oi.menu_item_id = m.id
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.status = 'PAID'
         GROUP BY m.id
         ORDER BY SUM(oi.quantity) DESC
         LIMIT 10
-        """)
+        """, nativeQuery = true)
     List<MenuItem> findBestSellers();
-
-    /**
-     * Used by MenuServiceImpl to check active status of multiple items at once
-     * (called by OrderingFacade before placing an order).
-     */
-    @Query("SELECT m FROM MenuItem m WHERE m.id IN :ids AND m.status = 'AVAILABLE'")
-    List<MenuItem> findAvailableByIds(List<Long> ids);
 }

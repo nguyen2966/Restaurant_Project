@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import softarch.restaurant.domain.order.service.OrderService;
+import softarch.restaurant.domain.payment.event.PaymentCompletedEvent;
 
 /**
  * Listens for PaymentCompletedEvent and transitions the order to PAID.

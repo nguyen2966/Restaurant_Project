@@ -7,40 +7,32 @@ import softarch.restaurant.domain.menu.entity.MenuItem;
 
 import java.util.List;
 
+/**
+ * Matches the MenuService interface defined in the diagram.
+ */
 public interface MenuService {
 
-    // ── Query ─────────────────────────────────────────────────────────────────
+    // ── Matches diagram: search(String query): List<MenuItem> ─────────────────
+    List<MenuItemResponse> search(String query);
 
-    List<MenuItemResponse> search(String query, ItemStatus status);
+    // ── Matches diagram: filterByCategory(Long catId): List<MenuItem> ─────────
+    // Category filtering is done via status in this schema (no category table)
+    List<MenuItemResponse> filterByStatus(ItemStatus status);
 
-    MenuItemResponse getById(Long id);
-
-    List<MenuItemResponse> getBestSellers();
-
-    // ── Command ───────────────────────────────────────────────────────────────
-
+    // ── Matches diagram: createItem / updateItem / deleteItem / setStatus ──────
     MenuItemResponse createItem(MenuRequest request);
-
     MenuItemResponse updateItem(Long id, MenuRequest request);
-
-    void deleteItem(Long id);
-
+    void             deleteItem(Long id);
     MenuItemResponse setStatus(Long id, ItemStatus status);
 
-    // ── Internal validation (used by OrderingFacade & AdminCatalogFacade) ──────
+    // ── Matches diagram: getBestSellers() ─────────────────────────────────────
+    List<MenuItemResponse> getBestSellers();
 
-    /**
-     * Verifies that all given menu item IDs exist and are currently AVAILABLE.
-     * Throws RestaurantException.badRequest if any item fails validation.
-     *
-     * @param menuItemIds list of IDs from an order request
-     * @return the fully-loaded MenuItem entities (avoids a second DB round-trip)
-     */
-    List<MenuItem> validateItemsAvailable(List<Long> menuItemIds);
+    // ── Matches diagram: validateBeforeDisable(Long id) ───────────────────────
+    // Throws RestaurantException if item is in an active order or active promo
+    void validateBeforeDisable(Long id);
 
-    /**
-     * Returns true if the given menu item is referenced in any non-CANCELLED, non-PAID order.
-     * Used by AdminCatalogFacade before disabling a menu item.
-     */
-    boolean isItemInActiveOrder(Long menuItemId);
+    // ── Matches diagram: validateItemsActive(menuItemIds): Boolean ────────────
+    // Returns the loaded MenuItem entities (avoids second DB round-trip in OrderingFacade)
+    List<MenuItem> validateItemsActive(List<Long> menuItemIds);
 }

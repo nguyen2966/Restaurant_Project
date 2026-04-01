@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import softarch.restaurant.domain.kitchen.dto.KitchenDTOs.KitchenTicketFilter;
 import softarch.restaurant.domain.kitchen.dto.KitchenDTOs.KitchenTicketResponse;
 import softarch.restaurant.domain.kitchen.dto.KitchenDTOs.SLAData;
-import softarch.restaurant.domain.kitchen.entity.KitchenItemDoneEvent;
+import softarch.restaurant.domain.kitchen.event.KitchenItemDoneEvent;
 import softarch.restaurant.domain.kitchen.entity.KitchenTicket;
 import softarch.restaurant.domain.kitchen.repository.KitchenRepository;
 import softarch.restaurant.domain.order.entity.OrderItem;
@@ -33,16 +33,13 @@ public class KitchenServiceImpl implements KitchenService {
 
     private final KitchenRepository      kitchenRepo;
     private final OrderItemRepository    orderItemRepo;
-    private final OrderRepository        orderRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     public KitchenServiceImpl(KitchenRepository kitchenRepo,
                               OrderItemRepository orderItemRepo,
-                              OrderRepository orderRepo,
                               ApplicationEventPublisher eventPublisher) {
         this.kitchenRepo    = kitchenRepo;
         this.orderItemRepo  = orderItemRepo;
-        this.orderRepo      = orderRepo;
         this.eventPublisher = eventPublisher;
     }
 

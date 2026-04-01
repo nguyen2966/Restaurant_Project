@@ -5,7 +5,6 @@ import org.springframework.transaction.annotation.Transactional;
 import softarch.restaurant.domain.promotion.dto.PromoDTOs.*;
 import softarch.restaurant.domain.promotion.entity.PromoItem;
 import softarch.restaurant.domain.promotion.entity.PromoStatus;
-import softarch.restaurant.domain.promotion.entity.PromoType;
 import softarch.restaurant.domain.promotion.repository.PromoRepository;
 import softarch.restaurant.shared.exception.RestaurantException;
 

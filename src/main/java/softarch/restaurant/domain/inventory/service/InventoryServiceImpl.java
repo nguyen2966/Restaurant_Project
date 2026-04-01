@@ -38,7 +38,6 @@ public class InventoryServiceImpl implements InventoryService {
         this.ingredientRepository  = ingredientRepository;
         this.recipeRepository      = recipeRepository;
         this.transactionRepository = transactionRepository;
-        this.eventPublisher        = eventPublisher;
     }
 
     // ── Manual usage ──────────────────────────────────────────────────────────

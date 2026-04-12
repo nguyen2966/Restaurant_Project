@@ -16,7 +16,7 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret:restaurant-secret-key-must-be-at-least-256-bits-long-for-hs256}")
+    @Value("${JWT_SECRET}")
     private String secretKey;
 
     @Value("${jwt.expiration-ms:86400000}") // 24 hours

@@ -1,13 +1,14 @@
 package softarch.restaurant.domain.kitchen.entity;
 
 /**
- * State pattern interface for KitchenTicket.
- * Each concrete state only permits the transitions that are valid from that state,
- * throwing IllegalStateException for invalid ones.
+ * State pattern interface — matches updated diagram.
+ *
+ * startCooking() nhận thêm Station để gán vào ticket khi bắt đầu nấu.
+ * Các transition khác (markDone, pause, undo) không cần station.
  */
 public interface TicketState {
 
-    default void startCooking(KitchenTicket ticket) {
+    default void startCooking(KitchenTicket ticket, Station station) {
         throw new IllegalStateException(
             "Cannot start cooking from state: " + ticket.getCurrentStateName());
     }
@@ -32,6 +33,5 @@ public interface TicketState {
             "Cannot undo from state: " + ticket.getCurrentStateName());
     }
 
-    /** Returns the string name stored in the DB column. */
     String name();
 }

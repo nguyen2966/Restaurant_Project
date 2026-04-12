@@ -14,7 +14,8 @@ public interface KitchenRepository
         extends JpaRepository<KitchenTicket, Long>,
                 JpaSpecificationExecutor<KitchenTicket> {
 
-    List<KitchenTicket> findByStation(String station);
+    // List<KitchenTicket> findByStation(String station);
+    List<KitchenTicket> findByAssignedStation_Id(Long stationId);
 
     List<KitchenTicket> findByStatusEnumValue(String status);
 

@@ -10,42 +10,36 @@ import java.util.List;
 
 /**
  * JPA Specifications cho KitchenTicket.
- *
- * Giải quyết lỗi PostgreSQL:
- *   "could not determine data type of parameter $N"
- *
- * Root cause: JPQL "(:param IS NULL OR col <= :param)" với LocalDateTime param
- * bị PostgreSQL JDBC driver không thể infer kiểu khi param = null.
- * Specification xây dựng WHERE clause động — chỉ thêm predicate khi param != null,
- * nên không bao giờ truyền null vào prepared statement.
+ * Tránh lỗi PostgreSQL "could not determine data type of parameter $N"
+ * bằng cách chỉ thêm predicate khi param != null.
  */
 public class KitchenTicketSpecs {
 
     private KitchenTicketSpecs() {}
 
     /**
-     * Build Specification từ các filter parameters.
-     * Chỉ thêm condition vào WHERE khi param khác null.
+     * Build WHERE clause động từ filter params.
      *
-     * @param status   filter theo currentState (e.g. "QUEUED", "COOKING")
-     * @param station  filter theo kitchen station (e.g. "GRILL")
-     * @param deadline chỉ trả về tickets có expectedCompletionTime <= deadline
+     * @param status    filter theo currentState (QUEUED/COOKING/READY/PAUSED)
+     * @param stationId filter theo station FK (null = tất cả stations)
+     * @param deadline  chỉ lấy tickets có deadlineTime <= deadline
      */
     public static Specification<KitchenTicket> withFilters(
             String status,
-            String station,
+            Long stationId,
             LocalDateTime deadline) {
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Chỉ thêm predicate khi param != null — không bao giờ truyền null cho PostgreSQL
             if (status != null && !status.isBlank()) {
                 predicates.add(cb.equal(root.get("statusEnumValue"), status));
             }
 
-            if (station != null && !station.isBlank()) {
-                predicates.add(cb.equal(root.get("station"), station));
+            // Join sang station để filter theo station_id
+            if (stationId != null) {
+                predicates.add(cb.equal(
+                    root.get("assignedStation").get("id"), stationId));
             }
 
             if (deadline != null) {
@@ -53,10 +47,17 @@ public class KitchenTicketSpecs {
                     root.get("deadlineTime"), deadline));
             }
 
-            // Mặc định sort theo deadlineTime ASC (tickets gần hết giờ lên đầu)
             query.orderBy(cb.asc(root.get("deadlineTime")));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * Filter theo danh sách stationIds (multi-station IN query).
+     */
+    public static Specification<KitchenTicket> withStationIds(List<Long> stationIds) {
+        return (root, query, cb) ->
+            root.get("assignedStation").get("id").in(stationIds);
     }
 }

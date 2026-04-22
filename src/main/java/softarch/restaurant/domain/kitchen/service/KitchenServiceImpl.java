@@ -223,9 +223,11 @@ import softarch.restaurant.domain.kitchen.event.KitchenItemDoneEvent;
 import softarch.restaurant.domain.kitchen.repository.KitchenRepository;
 import softarch.restaurant.domain.kitchen.repository.KitchenTicketSpecs;
 import softarch.restaurant.domain.kitchen.repository.StationRepository;
+import softarch.restaurant.domain.menu.entity.MenuItem;
 import softarch.restaurant.domain.order.entity.OrderItem;
 import softarch.restaurant.domain.order.repository.OrderItemRepository;
 import softarch.restaurant.domain.order.repository.OrderRepository;
+import softarch.restaurant.domain.menu.repository.MenuRepository;
 import softarch.restaurant.shared.exception.RestaurantException;
 
 import java.time.Duration;
@@ -243,15 +245,18 @@ public class KitchenServiceImpl implements KitchenService {
     private static final int DEFAULT_SLA_MINUTES = 20;
 
     private final KitchenRepository         kitchenRepo;
+    private final MenuRepository            menuRepo;
     private final StationRepository         stationRepo;
     private final OrderItemRepository       orderItemRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     public KitchenServiceImpl(KitchenRepository kitchenRepo,
+                              MenuRepository    menuRepo,
                               StationRepository stationRepo,
                               OrderItemRepository orderItemRepo,
                               OrderRepository orderRepo,
                               ApplicationEventPublisher eventPublisher) {
+        this.menuRepo       =  menuRepo;
         this.kitchenRepo    = kitchenRepo;
         this.stationRepo    = stationRepo;
         this.orderItemRepo  = orderItemRepo;
@@ -313,7 +318,36 @@ public class KitchenServiceImpl implements KitchenService {
                 .toList();
         }
 
-        return tickets.stream().map(KitchenTicketResponse::from).toList();
+        // 1. Get IDs for batch fetching
+        List<Long> menuIds = tickets.stream().map(KitchenTicket::getMenuItemId).distinct().toList();
+        List<Long> itemIds = tickets.stream().map(KitchenTicket::getOrderItemId).distinct().toList();
+
+        // 2. Fetch related data (assuming repositories are injected)
+        Map<Long, MenuItem> menuMap = menuRepo.findAllById(menuIds).stream()
+            .collect(Collectors.toMap(MenuItem::getId, m -> m));
+        Map<Long, OrderItem> itemMap = orderItemRepo.findAllById(itemIds).stream()
+            .collect(Collectors.toMap(OrderItem::getId, i -> i));
+
+        // 3. Map to new Response format
+        return tickets.stream().map(t -> {
+            MenuItem menu = menuMap.get(t.getMenuItemId());
+            OrderItem orderItem = itemMap.get(t.getOrderItemId());
+
+            return new KitchenTicketResponse(
+                t.getId(),
+                new OrderItemResponse(orderItem.getId(), orderItem.getMenuItemId(), orderItem.getQuantity(),orderItem.getSpecialNotes(), orderItem.getOptions() ),
+                new MenuItemResponse(menu.getId(), menu.getName()),
+                t.getQuantity(),
+                t.getCurrentStateName(),
+                t.getStartedAt(),
+                t.getFinishedAt(),
+                t.getDeadlineTime(),
+                t.isNearDeadline(),
+                t.getAssignedStation() != null ? StationResponse.from(t.getAssignedStation()) : null
+            );
+        }).toList();
+
+        // return tickets.stream().map(KitchenTicketResponse::from).toList();
     }
 
     // ── getAvailableStations ──────────────────────────────────────────────────

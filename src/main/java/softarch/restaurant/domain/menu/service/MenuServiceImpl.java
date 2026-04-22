@@ -108,10 +108,10 @@ public class MenuServiceImpl implements MenuService {
     public void validateBeforeDisable(Long id) {
         MenuItem item = findOrThrow(id);
 
-        if (orderItemRepository.existsInActiveOrder(id)) {
-            throw RestaurantException.conflict(
-                "Cannot disable '" + item.getName() + "': it is part of an active order.");
-        }
+        // if (orderItemRepository.existsInActiveOrder(id)) {
+        //     throw RestaurantException.conflict(
+        //         "Cannot disable '" + item.getName() + "': it is part of an active order.");
+        // }
         if (promoService.isItemInActivePromo(id)) {
             throw RestaurantException.conflict(
                 "Cannot disable '" + item.getName() + "': it is referenced by an active promotion.");

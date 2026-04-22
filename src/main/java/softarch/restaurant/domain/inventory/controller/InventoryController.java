@@ -3,6 +3,8 @@ package softarch.restaurant.domain.inventory.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import softarch.restaurant.domain.inventory.dto.InventoryDTOs.IngredientResponse;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.LowStockAlert;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.UsageRequest;
 import softarch.restaurant.domain.inventory.service.InventoryService;
@@ -41,5 +43,14 @@ public class InventoryController {
     @GetMapping("/alerts")
     public ResponseEntity<ApiResponse<List<LowStockAlert>>> alerts() {
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.checkLowStockAlerts()));
+    }
+
+    /**
+     * GET /api/inventory
+     * Trả về danh sách tất cả nguyên liệu trong kho.
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<IngredientResponse>>> getAll() {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getAllIngredients()));
     }
 }

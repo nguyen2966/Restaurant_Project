@@ -6,6 +6,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.AvailabilityResult;
+import softarch.restaurant.domain.inventory.dto.InventoryDTOs.IngredientResponse;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.LowStockAlert;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.UsageRequest;
 import softarch.restaurant.domain.inventory.entity.Ingredient;
@@ -180,5 +181,15 @@ public class InventoryServiceImpl implements InventoryService {
                 log.warn("LOW STOCK — '{}': {}/{} {}",
                     i.getName(), i.getCurrentStock(), i.getMinThreshold(), i.getUnit()));
         }
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<IngredientResponse> getAllIngredients() {
+        return ingredientRepository.findAll()
+            .stream()
+            .map(IngredientResponse::from)
+            .toList();
     }
 }

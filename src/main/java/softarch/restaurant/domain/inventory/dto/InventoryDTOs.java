@@ -60,4 +60,26 @@ public final class InventoryDTOs {
             return new AvailabilityResult(false, shortfalls);
         }
     }
+
+
+    public record IngredientResponse(
+    Long id,
+    String name,
+    BigDecimal currentStock,
+    BigDecimal minThreshold,
+    String unit,
+    java.time.LocalDateTime lastRestockDate
+    ) {
+        public static IngredientResponse from(Ingredient i) {
+             return new IngredientResponse(
+                    i.getId(),
+                    i.getName(),
+                    i.getCurrentStock(),
+                    i.getMinThreshold(),
+                    i.getUnit().name(),
+                    i.getLastRestockDate() // Đảm bảo thực thể Ingredient có field này
+                );
+        }
+
+    }
 }

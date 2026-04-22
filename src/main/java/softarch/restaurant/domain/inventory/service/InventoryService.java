@@ -1,6 +1,7 @@
 package softarch.restaurant.domain.inventory.service;
 
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.AvailabilityResult;
+import softarch.restaurant.domain.inventory.dto.InventoryDTOs.IngredientResponse;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.LowStockAlert;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.UsageRequest;
 
@@ -38,4 +39,6 @@ public interface InventoryService {
      * @return AvailabilityResult with detailed shortfall messages if stock is insufficient
      */
     AvailabilityResult checkAvailability(Map<Long, Integer> menuItemQuantities);
+
+    List<IngredientResponse> getAllIngredients();
 }

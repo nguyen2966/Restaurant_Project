@@ -743,39 +743,43 @@ export function useCancelOrder() {
 export type TicketStatus = 'QUEUED' | 'COOKING' | 'READY' | 'PAUSED' | 'DELIVERED';
 export type StationStatus = 'AVAILABLE' | 'IN_USE' | 'OFFLINE';
 
+// Thêm Interface cho MenuItem
+export interface MenuItemResponse {
+  id: number;
+  name: string;
+  basePrice: number;
+  description: string;
+  allergens: string;
+  status: string;
+}
+
+// Thêm Interface cho OrderItem
+export interface OrderItemResponse {
+  id: number;
+  menuItemId: number;
+  quantity: number;
+  specialNotes: string;
+  options: Record<string, string>; // Map<String, String> trong Java
+}
+
 export interface StationResponse {
   id: number;
   name: string;
-  type: string;       // 'GRILL' | 'COLD' | 'BAR' | 'FRY' | 'PASTRY' | 'UNASSIGNED'
+  type: string;
   status: StationStatus;
 }
 
 export interface KitchenTicketResponse {
   id: number;
-  orderItemId: number;
-  menuItemId: number;
+  orderItem: OrderItemResponse; 
+  menuItem: MenuItemResponse;   
   quantity: number;
   status: TicketStatus;
   startedAt: string | null;
   finishedAt: string | null;
   deadlineTime: string;
   nearDeadline: boolean;
-  assignedStation: StationResponse | null;  // null khi QUEUED atau PAUSED
-}
-
-export interface KitchenTicketFilter {
-  stations?: string[];
-  status?: TicketStatus;
-  nearDeadline?: boolean;
-  sortBy?: 'deadline' | 'station';
-}
-
-export interface SLAData {
-  menuItemId: number;
-  menuItemName: string;
-  avgMinutesToComplete: number;
-  totalTickets: number;
-  overdueTickets: number;
+  assignedStation: StationResponse | null;
 }
 ```
 
@@ -1145,6 +1149,15 @@ export interface LowStockAlert {
   minThreshold: number;
   unit: string;
 }
+
+export interface IngredientResponse {
+  id: number;
+  name: string;
+  currentStock: number;
+  minThreshold: number;
+  unit: string;
+  lastRestockDate: string | null;
+}
 ```
 
 ### API + Hooks (`src/api/inventory.api.ts`)
@@ -1158,6 +1171,10 @@ export const inventoryApi = {
     apiClient.post<void>('/api/inventory/usage', requests, {
       headers: { 'X-User-Id': userId },
     }),
+
+  getAll: () => 
+    apiClient.get<IngredientResponse[]>('/api/inventory')
+      .then(r => r.data),
 
   getAlerts: () =>
     apiClient.get<LowStockAlert[]>('/api/inventory/alerts').then(r => r.data),

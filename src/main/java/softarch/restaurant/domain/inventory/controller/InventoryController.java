@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.IngredientResponse;
+import softarch.restaurant.domain.inventory.dto.InventoryDTOs.InventoryTransactionResponse;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.LowStockAlert;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.UsageRequest;
 import softarch.restaurant.domain.inventory.service.InventoryService;
@@ -26,7 +27,8 @@ public class InventoryController {
      * POST /api/inventory/usage
      * Staff manually records ingredient usage (e.g. end-of-shift or waste log).
      *
-     * Header: X-User-Id  — resolved from JWT in a real system; passed directly here for simplicity.
+     * Header: X-User-Id — resolved from JWT in a real system; passed directly here
+     * for simplicity.
      */
     @PostMapping("/usage")
     public ResponseEntity<ApiResponse<Void>> recordUsage(
@@ -52,5 +54,16 @@ public class InventoryController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<IngredientResponse>>> getAll() {
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.getAllIngredients()));
+    }
+
+    /**
+     * GET /api/inventory/usage
+     * Returns the transaction history (usage, auto-deduct, restock).
+     * Optional query param ?ingredientId=<id> to filter by a specific ingredient.
+     */
+    @GetMapping("/usage")
+    public ResponseEntity<ApiResponse<List<InventoryTransactionResponse>>> getUsageHistory(
+            @RequestParam(required = false) Long ingredientId) {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getUsageHistory(ingredientId)));
     }
 }

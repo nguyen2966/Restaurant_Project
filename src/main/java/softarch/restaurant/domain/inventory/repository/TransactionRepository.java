@@ -12,4 +12,9 @@ public interface TransactionRepository extends JpaRepository<InventoryTransactio
 
     List<InventoryTransaction> findByIngredientIdAndTimestampBetween(
         Long ingredientId, LocalDateTime from, LocalDateTime to);
+
+    // NEW
+    List<InventoryTransaction> findAllByOrderByTimestampDesc();
+
+    List<InventoryTransaction> findByIngredientIdOrderByTimestampDesc(Long ingredientId);
 }

@@ -3,46 +3,43 @@ package softarch.restaurant.domain.inventory.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import softarch.restaurant.domain.inventory.entity.Ingredient;
+import softarch.restaurant.domain.inventory.entity.InventoryTransaction;
 import softarch.restaurant.domain.inventory.entity.UsageReason;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public final class InventoryDTOs {
 
-    private InventoryDTOs() {}
+    private InventoryDTOs() {
+    }
 
     // ── Inbound ───────────────────────────────────────────────────────────────
 
     public record UsageRequest(
-        @NotNull(message = "ingredientId is required")
-        Long ingredientId,
+            @NotNull(message = "ingredientId is required") Long ingredientId,
 
-        @NotNull(message = "amount is required")
-        @DecimalMin(value = "0.001", message = "amount must be positive")
-        BigDecimal amount,
+            @NotNull(message = "amount is required") @DecimalMin(value = "0.001", message = "amount must be positive") BigDecimal amount,
 
-        @NotNull(message = "reason is required")
-        UsageReason reason
-    ) {}
+            @NotNull(message = "reason is required") UsageReason reason) {
+    }
 
     // ── Outbound ──────────────────────────────────────────────────────────────
 
     public record LowStockAlert(
-        Long   ingredientId,
-        String name,
-        BigDecimal currentStock,
-        BigDecimal minThreshold,
-        String unit
-    ) {
+            Long ingredientId,
+            String name,
+            BigDecimal currentStock,
+            BigDecimal minThreshold,
+            String unit) {
         public static LowStockAlert from(Ingredient i) {
             return new LowStockAlert(
-                i.getId(),
-                i.getName(),
-                i.getCurrentStock(),
-                i.getMinThreshold(),
-                i.getUnit().name()
-            );
+                    i.getId(),
+                    i.getName(),
+                    i.getCurrentStock(),
+                    i.getMinThreshold(),
+                    i.getUnit().name());
         }
     }
 
@@ -61,25 +58,43 @@ public final class InventoryDTOs {
         }
     }
 
-
     public record IngredientResponse(
-    Long id,
-    String name,
-    BigDecimal currentStock,
-    BigDecimal minThreshold,
-    String unit,
-    java.time.LocalDateTime lastRestockDate
-    ) {
+            Long id,
+            String name,
+            BigDecimal currentStock,
+            BigDecimal minThreshold,
+            String unit,
+            java.time.LocalDateTime lastRestockDate) {
         public static IngredientResponse from(Ingredient i) {
-             return new IngredientResponse(
+            return new IngredientResponse(
                     i.getId(),
                     i.getName(),
                     i.getCurrentStock(),
                     i.getMinThreshold(),
                     i.getUnit().name(),
                     i.getLastRestockDate() // Đảm bảo thực thể Ingredient có field này
-                );
+            );
         }
 
+    }
+
+    public record InventoryTransactionResponse(
+            Long id,
+            Long ingredientId,
+            String ingredientName,
+            BigDecimal amountChanged,
+            String reason,
+            LocalDateTime timestamp,
+            Long createdByUserId) {
+        public static InventoryTransactionResponse from(InventoryTransaction tx, String ingredientName) {
+            return new InventoryTransactionResponse(
+                    tx.getId(),
+                    tx.getIngredientId(),
+                    ingredientName,
+                    tx.getAmountChanged(),
+                    tx.getReason().name(),
+                    tx.getTimestamp(),
+                    tx.getCreatedByUserId());
+        }
     }
 }

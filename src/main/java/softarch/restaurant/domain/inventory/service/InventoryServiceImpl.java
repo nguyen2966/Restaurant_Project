@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.AvailabilityResult;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.IngredientResponse;
+import softarch.restaurant.domain.inventory.dto.InventoryDTOs.InventoryTransactionResponse;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.LowStockAlert;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.UsageRequest;
 import softarch.restaurant.domain.inventory.entity.Ingredient;
@@ -29,15 +30,15 @@ public class InventoryServiceImpl implements InventoryService {
     private static final Logger log = LoggerFactory.getLogger(InventoryServiceImpl.class);
 
     private final IngredientRepository ingredientRepository;
-    private final RecipeRepository     recipeRepository;
+    private final RecipeRepository recipeRepository;
     private final TransactionRepository transactionRepository;
 
     public InventoryServiceImpl(IngredientRepository ingredientRepository,
-                                RecipeRepository recipeRepository,
-                                TransactionRepository transactionRepository,
-                                ApplicationEventPublisher eventPublisher) {
-        this.ingredientRepository  = ingredientRepository;
-        this.recipeRepository      = recipeRepository;
+            RecipeRepository recipeRepository,
+            TransactionRepository transactionRepository,
+            ApplicationEventPublisher eventPublisher) {
+        this.ingredientRepository = ingredientRepository;
+        this.recipeRepository = recipeRepository;
         this.transactionRepository = transactionRepository;
     }
 
@@ -51,11 +52,10 @@ public class InventoryServiceImpl implements InventoryService {
             ingredientRepository.save(ingredient);
 
             transactionRepository.save(new InventoryTransaction(
-                req.ingredientId(),
-                req.amount().negate(),
-                req.reason(),
-                staffUserId
-            ));
+                    req.ingredientId(),
+                    req.amount().negate(),
+                    req.reason(),
+                    staffUserId));
         }
         // After deductions, log any newly low-stock ingredients
         logLowStockWarnings();
@@ -74,17 +74,17 @@ public class InventoryServiceImpl implements InventoryService {
 
         for (RecipeItem recipeItem : recipe) {
             BigDecimal totalNeeded = recipeItem.getRequiredAmount()
-                .multiply(BigDecimal.valueOf(quantity));
+                    .multiply(BigDecimal.valueOf(quantity));
 
             Ingredient ingredient = findIngredientOrThrow(recipeItem.getIngredientId());
             ingredient.deduct(totalNeeded);
             ingredientRepository.save(ingredient);
 
             transactionRepository.save(new InventoryTransaction(
-                recipeItem.getIngredientId(),
-                totalNeeded.negate(),
-                UsageReason.AUTO_DEDUCT,
-                null   // system-initiated — no user
+                    recipeItem.getIngredientId(),
+                    totalNeeded.negate(),
+                    UsageReason.AUTO_DEDUCT,
+                    null // system-initiated — no user
             ));
         }
         logLowStockWarnings();
@@ -96,18 +96,18 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional(readOnly = true)
     public List<LowStockAlert> checkLowStockAlerts() {
         return ingredientRepository.findLowStockIngredients()
-            .stream()
-            .map(LowStockAlert::from)
-            .toList();
+                .stream()
+                .map(LowStockAlert::from)
+                .toList();
     }
 
     // ── Pre-order availability check ──────────────────────────────────────────
 
     /**
      * For each requested menu item:
-     *   1. Load its recipe (ingredient → requiredAmount)
-     *   2. Multiply requiredAmount × quantity
-     *   3. Compare against current stock
+     * 1. Load its recipe (ingredient → requiredAmount)
+     * 2. Multiply requiredAmount × quantity
+     * 3. Compare against current stock
      *
      * Aggregates across multiple items so that two dishes sharing the same
      * ingredient are checked together (e.g. 2× Phở + 1× Bún both use beef).
@@ -120,13 +120,13 @@ public class InventoryServiceImpl implements InventoryService {
         Map<Long, BigDecimal> totalDemand = new HashMap<>();
 
         for (Map.Entry<Long, Integer> entry : menuItemQuantities.entrySet()) {
-            Long menuItemId  = entry.getKey();
-            int  quantity    = entry.getValue();
+            Long menuItemId = entry.getKey();
+            int quantity = entry.getValue();
 
             List<RecipeItem> recipe = recipeRepository.findByMenuItemId(menuItemId);
             for (RecipeItem ri : recipe) {
                 BigDecimal needed = ri.getRequiredAmount()
-                    .multiply(BigDecimal.valueOf(quantity));
+                        .multiply(BigDecimal.valueOf(quantity));
                 totalDemand.merge(ri.getIngredientId(), needed, BigDecimal::add);
             }
         }
@@ -139,14 +139,14 @@ public class InventoryServiceImpl implements InventoryService {
         // Load all relevant ingredients in one query
         List<Ingredient> ingredients = ingredientRepository.findAllById(totalDemand.keySet());
         Map<Long, Ingredient> ingredientMap = ingredients.stream()
-            .collect(Collectors.toMap(Ingredient::getId, i -> i));
+                .collect(Collectors.toMap(Ingredient::getId, i -> i));
 
         List<String> shortfalls = new ArrayList<>();
 
         for (Map.Entry<Long, BigDecimal> demand : totalDemand.entrySet()) {
-            Long       ingredientId = demand.getKey();
-            BigDecimal needed       = demand.getValue();
-            Ingredient ingredient   = ingredientMap.get(ingredientId);
+            Long ingredientId = demand.getKey();
+            BigDecimal needed = demand.getValue();
+            Ingredient ingredient = ingredientMap.get(ingredientId);
 
             if (ingredient == null) {
                 shortfalls.add("Ingredient id=" + ingredientId + " not found in inventory");
@@ -154,42 +154,61 @@ public class InventoryServiceImpl implements InventoryService {
             }
             if (ingredient.getCurrentStock().compareTo(needed) < 0) {
                 shortfalls.add(String.format(
-                    "'%s': needed %.3f %s, available %.3f %s",
-                    ingredient.getName(),
-                    needed, ingredient.getUnit().name(),
-                    ingredient.getCurrentStock(), ingredient.getUnit().name()
-                ));
+                        "'%s': needed %.3f %s, available %.3f %s",
+                        ingredient.getName(),
+                        needed, ingredient.getUnit().name(),
+                        ingredient.getCurrentStock(), ingredient.getUnit().name()));
             }
         }
 
         return shortfalls.isEmpty()
-            ? AvailabilityResult.ok()
-            : AvailabilityResult.insufficient(shortfalls);
+                ? AvailabilityResult.ok()
+                : AvailabilityResult.insufficient(shortfalls);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Ingredient findIngredientOrThrow(Long id) {
         return ingredientRepository.findById(id)
-            .orElseThrow(() -> RestaurantException.notFound("Ingredient", id));
+                .orElseThrow(() -> RestaurantException.notFound("Ingredient", id));
     }
 
     private void logLowStockWarnings() {
         List<Ingredient> lowStock = ingredientRepository.findLowStockIngredients();
         if (!lowStock.isEmpty()) {
-            lowStock.forEach(i ->
-                log.warn("LOW STOCK — '{}': {}/{} {}",
+            lowStock.forEach(i -> log.warn("LOW STOCK — '{}': {}/{} {}",
                     i.getName(), i.getCurrentStock(), i.getMinThreshold(), i.getUnit()));
         }
     }
-
 
     @Override
     @Transactional(readOnly = true)
     public List<IngredientResponse> getAllIngredients() {
         return ingredientRepository.findAll()
-            .stream()
-            .map(IngredientResponse::from)
-            .toList();
+                .stream()
+                .map(IngredientResponse::from)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryTransactionResponse> getUsageHistory(Long ingredientId) {
+        List<InventoryTransaction> transactions = (ingredientId != null)
+                ? transactionRepository.findByIngredientIdOrderByTimestampDesc(ingredientId)
+                : transactionRepository.findAllByOrderByTimestampDesc();
+
+        // Build a name lookup map to avoid N+1 queries
+        Set<Long> ids = transactions.stream()
+                .map(InventoryTransaction::getIngredientId)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> nameMap = ingredientRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Ingredient::getId, Ingredient::getName));
+
+        return transactions.stream()
+                .map(tx -> InventoryTransactionResponse.from(
+                        tx,
+                        nameMap.getOrDefault(tx.getIngredientId(), "Unknown")))
+                .toList();
     }
 }

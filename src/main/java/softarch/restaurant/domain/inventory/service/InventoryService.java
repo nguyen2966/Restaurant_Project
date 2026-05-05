@@ -2,6 +2,7 @@ package softarch.restaurant.domain.inventory.service;
 
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.AvailabilityResult;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.IngredientResponse;
+import softarch.restaurant.domain.inventory.dto.InventoryDTOs.InventoryTransactionResponse;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.LowStockAlert;
 import softarch.restaurant.domain.inventory.dto.InventoryDTOs.UsageRequest;
 
@@ -36,9 +37,19 @@ public interface InventoryService {
      * Used by OrderingFacade BEFORE creating the order.
      *
      * @param menuItemQuantities map of menuItemId → quantity requested
-     * @return AvailabilityResult with detailed shortfall messages if stock is insufficient
+     * @return AvailabilityResult with detailed shortfall messages if stock is
+     *         insufficient
      */
     AvailabilityResult checkAvailability(Map<Long, Integer> menuItemQuantities);
 
     List<IngredientResponse> getAllIngredients();
+
+    /**
+     * Returns a log of inventory transactions (usage, auto-deduct, restock).
+     * Optionally filtered by a specific ingredient.
+     *
+     * @param ingredientId filter to a specific ingredient; null means all
+     *                     ingredients
+     */
+    List<InventoryTransactionResponse> getUsageHistory(Long ingredientId);
 }

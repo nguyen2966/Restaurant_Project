@@ -4,8 +4,12 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 /**
- * Maps a MenuItem to the ingredients it consumes when prepared.
- * Used by InventoryService to auto-deduct stock when an order item is completed.
+ * Maps a MenuItem to the ingredients it consumes when one portion is prepared.
+ *
+ * Used by InventoryService.autoDeductForMenuItem() to know how much of each
+ * ingredient to deduct when a KitchenTicket transitions to DONE.
+ *
+ * Updated: added public constructor and updateAmount() for RecipeController.
  */
 @Entity
 @Table(name = "recipe_item",
@@ -26,6 +30,25 @@ public class RecipeItem {
     private BigDecimal requiredAmount;
 
     protected RecipeItem() {}
+
+    /**
+     * Public constructor — used by RecipeController when creating new lines.
+     */
+    public RecipeItem(Long menuItemId, Long ingredientId, BigDecimal requiredAmount) {
+        this.menuItemId      = menuItemId;
+        this.ingredientId    = ingredientId;
+        this.requiredAmount  = requiredAmount;
+    }
+
+    /**
+     * Updates the required amount — used by PUT /api/menu/{id}/recipe/{lineId}.
+     */
+    public void updateAmount(BigDecimal newAmount) {
+        if (newAmount == null || newAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("requiredAmount must be positive");
+        }
+        this.requiredAmount = newAmount;
+    }
 
     public Long getId()                  { return id; }
     public Long getMenuItemId()          { return menuItemId; }

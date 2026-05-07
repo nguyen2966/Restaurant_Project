@@ -14,10 +14,15 @@ import softarch.restaurant.shared.dto.ApiResponse;
 import softarch.restaurant.shared.exception.RestaurantException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * RecipeController — manages the ingredient-to-menu-item mapping (recipe_item table).
+ * RecipeController — manages the ingredient-to-menu-item mapping (recipe_item
+ * table).
  *
  * A menu item without recipe entries will silently skip inventory deduction
  * when cooked (by design — items like drinks may not need tracking).
@@ -27,34 +32,31 @@ import java.util.List;
 @RequestMapping("/api/menu/{menuItemId}/recipe")
 public class RecipeController {
 
-    private final RecipeRepository     recipeRepository;
+    private final RecipeRepository recipeRepository;
     private final IngredientRepository ingredientRepository;
 
     public RecipeController(RecipeRepository recipeRepository,
-                            IngredientRepository ingredientRepository) {
-        this.recipeRepository     = recipeRepository;
+            IngredientRepository ingredientRepository) {
+        this.recipeRepository = recipeRepository;
         this.ingredientRepository = ingredientRepository;
     }
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
 
     public record RecipeLineRequest(
-        @NotNull(message = "ingredientId is required")
-        Long ingredientId,
+            @NotNull(message = "ingredientId is required") Long ingredientId,
 
-        @NotNull(message = "requiredAmount is required")
-        @DecimalMin(value = "0.001", message = "requiredAmount must be positive")
-        BigDecimal requiredAmount
-    ) {}
+            @NotNull(message = "requiredAmount is required") @DecimalMin(value = "0.001", message = "requiredAmount must be positive") BigDecimal requiredAmount) {
+    }
 
     public record RecipeLineResponse(
-        Long       id,
-        Long       menuItemId,
-        Long       ingredientId,
-        String     ingredientName,
-        String     unit,
-        BigDecimal requiredAmount
-    ) {}
+            Long id,
+            Long menuItemId,
+            Long ingredientId,
+            String ingredientName,
+            String unit,
+            BigDecimal requiredAmount) {
+    }
 
     // ── GET /api/menu/{menuItemId}/recipe ─────────────────────────────────────
 
@@ -68,8 +70,8 @@ public class RecipeController {
 
         List<RecipeItem> items = recipeRepository.findByMenuItemId(menuItemId);
         List<RecipeLineResponse> response = items.stream()
-            .map(ri -> toResponse(ri))
-            .toList();
+                .map(ri -> toResponse(ri))
+                .toList();
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -80,27 +82,53 @@ public class RecipeController {
      * Throws 409 if ingredient already exists in this recipe.
      */
     @PostMapping
-    public ResponseEntity<ApiResponse<RecipeLineResponse>> addLine(
+    public ResponseEntity<ApiResponse<List<RecipeLineResponse>>> addLines(
             @PathVariable Long menuItemId,
-            @Valid @RequestBody RecipeLineRequest request) {
+            @Valid @RequestBody List<RecipeLineRequest> requests) {
 
-        // Guard: duplicate ingredient in same recipe
-        boolean exists = recipeRepository.findByMenuItemId(menuItemId).stream()
-            .anyMatch(ri -> ri.getIngredientId().equals(request.ingredientId()));
-        if (exists) {
-            throw RestaurantException.conflict(
-                "Ingredient id=" + request.ingredientId() +
-                " already exists in this recipe. Use PUT to update.");
+        // Existing ingredients in recipe
+        Set<Long> existingIngredientIds = recipeRepository.findByMenuItemId(menuItemId)
+                .stream()
+                .map(RecipeItem::getIngredientId)
+                .collect(Collectors.toSet());
+
+        // Check duplicate ingredient inside request body
+        Set<Long> requestIngredientIds = new HashSet<>();
+
+        for (RecipeLineRequest request : requests) {
+
+            // Duplicate inside request payload
+            if (!requestIngredientIds.add(request.ingredientId())) {
+                throw RestaurantException.conflict(
+                        "Duplicate ingredient id=" + request.ingredientId() + " in request.");
+            }
+
+            // Already exists in DB
+            if (existingIngredientIds.contains(request.ingredientId())) {
+                throw RestaurantException.conflict(
+                        "Ingredient id=" + request.ingredientId() +
+                                " already exists in this recipe. Use PUT to update.");
+            }
         }
 
-        Ingredient ingredient = ingredientRepository.findById(request.ingredientId())
-            .orElseThrow(() -> RestaurantException.notFound("Ingredient", request.ingredientId()));
+        List<RecipeLineResponse> responses = new ArrayList<>();
 
-        RecipeItem saved = recipeRepository.save(
-            new RecipeItem(menuItemId, request.ingredientId(), request.requiredAmount()));
+        for (RecipeLineRequest request : requests) {
+
+            Ingredient ingredient = ingredientRepository.findById(request.ingredientId())
+                    .orElseThrow(() -> RestaurantException.notFound("Ingredient", request.ingredientId()));
+
+            RecipeItem saved = recipeRepository.save(
+                    new RecipeItem(
+                            menuItemId,
+                            request.ingredientId(),
+                            request.requiredAmount()));
+
+            responses.add(toResponse(saved, ingredient));
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.ok(toResponse(saved, ingredient), "Recipe line added"));
+                .body(ApiResponse.ok(responses, "Recipe lines added"));
     }
 
     // ── PUT /api/menu/{menuItemId}/recipe/{recipeItemId} ──────────────────────
@@ -115,7 +143,7 @@ public class RecipeController {
             @Valid @RequestBody RecipeLineRequest request) {
 
         RecipeItem item = recipeRepository.findById(recipeItemId)
-            .orElseThrow(() -> RestaurantException.notFound("RecipeItem", recipeItemId));
+                .orElseThrow(() -> RestaurantException.notFound("RecipeItem", recipeItemId));
 
         if (!item.getMenuItemId().equals(menuItemId)) {
             throw RestaurantException.badRequest("Recipe item does not belong to menuItem " + menuItemId);
@@ -137,7 +165,7 @@ public class RecipeController {
             @PathVariable Long recipeItemId) {
 
         RecipeItem item = recipeRepository.findById(recipeItemId)
-            .orElseThrow(() -> RestaurantException.notFound("RecipeItem", recipeItemId));
+                .orElseThrow(() -> RestaurantException.notFound("RecipeItem", recipeItemId));
 
         if (!item.getMenuItemId().equals(menuItemId)) {
             throw RestaurantException.badRequest("Recipe item does not belong to menuItem " + menuItemId);
@@ -164,36 +192,34 @@ public class RecipeController {
 
         // Insert the new lines
         List<RecipeItem> saved = requests.stream()
-            .map(req -> recipeRepository.save(
-                new RecipeItem(menuItemId, req.ingredientId(), req.requiredAmount())))
-            .toList();
+                .map(req -> recipeRepository.save(
+                        new RecipeItem(menuItemId, req.ingredientId(), req.requiredAmount())))
+                .toList();
 
         List<RecipeLineResponse> response = saved.stream()
-            .map(ri -> toResponse(ri))
-            .toList();
+                .map(ri -> toResponse(ri))
+                .toList();
 
         return ResponseEntity.ok(ApiResponse.ok(response,
-            "Recipe updated: " + response.size() + " lines"));
+                "Recipe updated: " + response.size() + " lines"));
     }
 
     // ── Mappers ───────────────────────────────────────────────────────────────
 
     private RecipeLineResponse toResponse(RecipeItem ri) {
         Ingredient ingredient = ingredientRepository.findById(ri.getIngredientId())
-            .orElse(null);
+                .orElse(null);
         return new RecipeLineResponse(
-            ri.getId(), ri.getMenuItemId(), ri.getIngredientId(),
-            ingredient != null ? ingredient.getName() : "Unknown",
-            ingredient != null ? ingredient.getUnit().name() : "?",
-            ri.getRequiredAmount()
-        );
+                ri.getId(), ri.getMenuItemId(), ri.getIngredientId(),
+                ingredient != null ? ingredient.getName() : "Unknown",
+                ingredient != null ? ingredient.getUnit().name() : "?",
+                ri.getRequiredAmount());
     }
 
     private RecipeLineResponse toResponse(RecipeItem ri, Ingredient ingredient) {
         return new RecipeLineResponse(
-            ri.getId(), ri.getMenuItemId(), ri.getIngredientId(),
-            ingredient.getName(), ingredient.getUnit().name(),
-            ri.getRequiredAmount()
-        );
+                ri.getId(), ri.getMenuItemId(), ri.getIngredientId(),
+                ingredient.getName(), ingredient.getUnit().name(),
+                ri.getRequiredAmount());
     }
 }

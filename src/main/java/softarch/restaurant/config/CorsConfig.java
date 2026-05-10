@@ -21,7 +21,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins:http://localhost:8080,https://restaurant-project-q4qu.onrender.com}")
+    @Value("${cors.allowed-origins:https://menu-maestro.nghia-trantrong0409.workers.dev,http://localhost:8080,https://restaurant-project-q4qu.onrender.com}")
     private List<String> allowedOrigins;
 
     @Bean
